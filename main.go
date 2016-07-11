@@ -6,24 +6,89 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
+	"time"
 )
 
 var input, output []string
 
-func main() {
-	cmd := os.Args[1]
+func readStdin(i chan string) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		ok := scanner.Scan()
+		if !ok {
+			close(i)
+			break
+		}
+		i <- scanner.Text()
+	}
+}
 
-	out, err := exec.Command("bash", "-c", cmd).Output()
+func readCmd(cmdString string, o chan string) {
+	cmd := exec.Command("bash", "-c", cmdString)
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	output = strings.Split(string(out), "\n")
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		input = append(input, scanner.Text())
+	scanner := bufio.NewScanner(stdout)
+	for {
+		ok := scanner.Scan()
+
+		if !ok {
+			close(o)
+			break
+		}
+		o <- scanner.Text()
+	}
+
+	if err := cmd.Wait(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func main() {
+	cmd := os.Args[1]
+
+	i := make(chan string)
+	o := make(chan string)
+	timeout := 15 * time.Second
+
+	go readStdin(i)
+	go readCmd(cmd, o)
+
+	inTimer := time.NewTimer(timeout)
+in:
+	for {
+		select {
+		case s, ok := <-i:
+			if !ok {
+				break in
+			}
+			input = append(input, s)
+			inTimer.Reset(timeout)
+		case <-inTimer.C:
+			break in
+		}
+	}
+
+	outTimer := time.NewTimer(timeout)
+out:
+	for {
+		select {
+		case s, ok := <-o:
+			if !ok {
+				break out
+			}
+			output = append(output, s)
+			outTimer.Reset(timeout)
+		case <-outTimer.C:
+			break out
+		}
 	}
 
 	for _, v := range input {

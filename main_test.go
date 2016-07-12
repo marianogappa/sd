@@ -113,3 +113,38 @@ loop:
 
 	close(done)
 }
+
+func TestDiffWhenOutputTimesOut(t *testing.T) {
+	i := make(chan string)
+	stdout := make(chan string)
+	done := make(chan struct{})
+
+	go diff(`echo -e "one\ntwo" && sleep 1 && echo -e "three\nfour"`, 100*time.Millisecond, i, stdout, done, mockUtils{})
+
+	i <- "one"
+	i <- "two"
+	i <- "three"
+	i <- "four"
+	i <- "five"
+
+	lines := []string{}
+loop:
+	for {
+		select {
+		case line, ok := <-stdout:
+			if !ok {
+				break loop
+			}
+			lines = append(lines, line)
+		case <-time.After(1 * time.Second):
+			break loop
+		}
+	}
+
+	sort.Strings(lines) // order is not deterministic
+	if reflect.DeepEqual(lines, []string{"five", "four", "three"}) != true {
+		t.Errorf("result wasn't ['five', 'four', 'three'], it was %v", lines)
+	}
+
+	close(done)
+}

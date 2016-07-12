@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -12,16 +13,12 @@ import (
 
 var input, output []string
 
-func readStdin(i chan string) {
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		ok := scanner.Scan()
-		if !ok {
-			close(i)
-			break
-		}
-		i <- scanner.Text()
+func scanToChannel(from io.Reader, to chan string) {
+	scanner := bufio.NewScanner(from)
+	for scanner.Scan() {
+		to <- scanner.Text()
 	}
+	close(to)
 }
 
 func readCmd(cmdString string, o chan string) {
@@ -36,15 +33,7 @@ func readCmd(cmdString string, o chan string) {
 		log.Fatal(err)
 	}
 
-	scanner := bufio.NewScanner(stdout)
-	for {
-		ok := scanner.Scan()
-		if !ok {
-			close(o)
-			break
-		}
-		o <- scanner.Text()
-	}
+	scanToChannel(stdout, o)
 
 	if err := cmd.Wait(); err != nil {
 		log.Fatal(err)
@@ -54,7 +43,7 @@ func readCmd(cmdString string, o chan string) {
 func diff(cmd string, timeout time.Duration, i chan string, o chan string, stdout chan string) {
 	done := make(chan struct{})
 
-	go readStdin(i)
+	go scanToChannel(os.Stdin, i)
 	go readCmd(cmd, o)
 
 	inTimer := time.NewTimer(timeout)

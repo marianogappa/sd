@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -56,6 +57,8 @@ func main() {
 
 	i := make(chan string)
 	o := make(chan string)
+	stdout := make(chan string)
+	done := make(chan struct{})
 	timeout := 15 * time.Second
 
 	go readStdin(i)
@@ -91,15 +94,32 @@ out:
 		}
 	}
 
+	go func(done chan struct{}) {
+		for s := range stdout {
+			fmt.Println(s)
+		}
+		close(done)
+	}(done)
+
+	var wg sync.WaitGroup
+	wg.Add(len(input))
+
 	for _, v := range input {
-		found := false
-		for _, w := range output {
-			if v == w {
-				found = true
+		go func(v string, stdout chan string) {
+			found := false
+			for _, w := range output {
+				if v == w {
+					found = true
+				}
 			}
-		}
-		if !found {
-			fmt.Println(v)
-		}
+			if !found {
+				stdout <- v
+			}
+			wg.Done()
+		}(v, stdout)
 	}
+
+	wg.Wait()
+	close(stdout)
+	<-done
 }

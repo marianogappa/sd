@@ -1,0 +1,32 @@
+# differ
+
+## What does it do?
+
+In principle, this:
+```
+$ echo -e "1\n2\n3\n4\n5" | ./differ 'echo -e "2\n4"'
+1
+3
+5
+```
+
+But both STDIN and the string representing a command can be lengthy operations that stream results, like:
+```
+$ echo "1" && sleep 1 && echo "2" | ./differ 'sleep 1 && echo "2"'
+1
+```
+
+## Use case (that motivated this)
+
+```
+*mysql_query* | ./differ *kafka_consumer* | *kafka_producer*
+```
+
+## TODO
+
+- diff *while* reading stdin
+- separate timeouts for stdin and command
+- optional timeout for stdin
+- output uniques
+- take all parameters from flags
+- test for sleeping for less than timeout in between sends, repeatedly

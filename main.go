@@ -39,7 +39,6 @@ func readCmd(cmdString string, o chan string) {
 	scanner := bufio.NewScanner(stdout)
 	for {
 		ok := scanner.Scan()
-
 		if !ok {
 			close(o)
 			break
@@ -52,14 +51,8 @@ func readCmd(cmdString string, o chan string) {
 	}
 }
 
-func main() {
-	cmd := os.Args[1]
-
-	i := make(chan string)
-	o := make(chan string)
-	stdout := make(chan string)
+func diff(cmd string, timeout time.Duration, i chan string, o chan string, stdout chan string) {
 	done := make(chan struct{})
-	timeout := 15 * time.Second
 
 	go readStdin(i)
 	go readCmd(cmd, o)
@@ -122,4 +115,15 @@ out:
 	wg.Wait()
 	close(stdout)
 	<-done
+}
+
+func main() {
+	cmd := os.Args[1]
+
+	i := make(chan string)
+	o := make(chan string)
+	stdout := make(chan string)
+	timeout := 15 * time.Second
+
+	diff(cmd, timeout, i, o, stdout)
 }

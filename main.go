@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-var input, output []string
-
 type iDiffUtils interface {
 	scanStdinToChannel(to chan string)
 }
@@ -49,7 +47,7 @@ func readCmd(cmdString string, o chan string) {
 	}
 }
 
-func diffLine(v string, stdout chan string, wg *sync.WaitGroup) {
+func diffLine(v string, stdout chan string, output []string, wg *sync.WaitGroup) {
 	found := false
 	for _, w := range output {
 		if v == w {
@@ -70,6 +68,8 @@ func printLn(stdout chan string, done chan struct{}) {
 }
 
 func diff(cmd string, timeout time.Duration, i chan string, stdout chan string, done chan struct{}, utils iDiffUtils) {
+	var diffed, diffee []string
+
 	o := make(chan string)
 
 	go utils.scanStdinToChannel(i)
@@ -83,7 +83,7 @@ in:
 			if !ok {
 				break in
 			}
-			input = append(input, s)
+			diffed = append(diffed, s)
 			inTimer.Reset(timeout)
 		case <-inTimer.C:
 			break in
@@ -98,7 +98,7 @@ out:
 			if !ok {
 				break out
 			}
-			output = append(output, s)
+			diffee = append(diffee, s)
 			outTimer.Reset(timeout)
 		case <-outTimer.C:
 			break out
@@ -106,10 +106,10 @@ out:
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(input))
+	wg.Add(len(diffed))
 
-	for _, v := range input {
-		go diffLine(v, stdout, &wg)
+	for _, v := range diffed {
+		go diffLine(v, stdout, diffee, &wg)
 	}
 
 	wg.Wait()

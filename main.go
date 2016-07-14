@@ -16,19 +16,38 @@ type iDiffUtils interface {
 }
 type diffUtils struct{}
 
-func scanToChannel(from io.Reader, to chan string) {
+func scanToChannel(from io.Reader, to chan string, cancel chan struct{}) {
 	scanner := bufio.NewScanner(from)
-	for scanner.Scan() {
-		to <- scanner.Text()
+	intermediate := make(chan string)
+
+	go func() {
+		for scanner.Scan() {
+			intermediate <- scanner.Text()
+		}
+		close(intermediate)
+	}()
+
+loop:
+	for {
+		select {
+		case s, ok := <-intermediate:
+			if !ok {
+				break loop
+			}
+			to <- s
+		case <-cancel:
+			break loop
+		}
 	}
 	close(to)
 }
 
 func (d diffUtils) scanStdinToChannel(i chan string) {
-	scanToChannel(os.Stdin, i)
+	cancel := make(chan struct{})
+	scanToChannel(os.Stdin, i, cancel)
 }
 
-func readCmd(cmdString string, o chan string) {
+func readCmd(cmdString string, o chan string, cancel chan struct{}) {
 	cmd := exec.Command("bash", "-c", cmdString)
 
 	stdout, err := cmd.StdoutPipe()
@@ -40,16 +59,24 @@ func readCmd(cmdString string, o chan string) {
 		log.Fatal(err)
 	}
 
-	scanToChannel(stdout, o)
+	go scanToChannel(stdout, o, cancel)
 
 	if err := cmd.Wait(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func diffLine(v string, stdout chan string, output []string, wg *sync.WaitGroup) {
+func diffLine(v string, stdout chan string, diffee *[]string, start chan struct{}, wg *sync.WaitGroup) {
+loop:
+	for {
+		select {
+		case <-start:
+			break loop
+		}
+	} // wait until diffee finishes loading
+
 	found := false
-	for _, w := range output {
+	for _, w := range *diffee {
 		if v == w {
 			found = true
 		}
@@ -67,54 +94,62 @@ func printLn(stdout chan string, done chan struct{}) {
 	close(done)
 }
 
-func diff(cmd string, timeout time.Duration, i chan string, stdout chan string, done chan struct{}, utils iDiffUtils) {
-	var diffed, diffee []string
+func diff(cmd string, timeout time.Duration, i chan string, stdout chan string, utils iDiffUtils) {
+	var diffee []string
 
 	o := make(chan string)
+	start := make(chan struct{})
+	cancel := make(chan struct{})
+
+	stdinFinished := false
+	cmdFinished := false
 
 	go utils.scanStdinToChannel(i)
-	go readCmd(cmd, o)
+	go readCmd(cmd, o, cancel)
 
+	var wg sync.WaitGroup
+
+	outTimer := time.NewTimer(timeout)
 	inTimer := time.NewTimer(timeout)
-in:
+loop:
 	for {
 		select {
 		case s, ok := <-i:
-			if !ok {
-				break in
+			if !stdinFinished {
+				if !ok {
+					stdinFinished = true
+					if cmdFinished {
+						break loop
+					}
+					continue
+				}
+				wg.Add(1)
+				go diffLine(s, stdout, &diffee, start, &wg)
+				inTimer.Reset(timeout)
 			}
-			diffed = append(diffed, s)
-			inTimer.Reset(timeout)
-		case <-inTimer.C:
-			break in
-		}
-	}
-
-	outTimer := time.NewTimer(timeout)
-out:
-	for {
-		select {
 		case s, ok := <-o:
-			if !ok {
-				break out
+			if !cmdFinished {
+				if !ok {
+					cmdFinished = true
+					close(start)
+					if stdinFinished {
+						break loop
+					}
+					continue
+				}
+				diffee = append(diffee, s)
+				outTimer.Reset(timeout)
 			}
-			diffee = append(diffee, s)
-			outTimer.Reset(timeout)
+		case <-inTimer.C:
+			if cmdFinished {
+				break loop
+			}
 		case <-outTimer.C:
-			break out
+			close(cancel)
 		}
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(diffed))
-
-	for _, v := range diffed {
-		go diffLine(v, stdout, diffee, &wg)
-	}
-
 	wg.Wait()
 	close(stdout)
-	<-done
 }
 
 func main() {
@@ -123,8 +158,9 @@ func main() {
 	i := make(chan string)
 	stdout := make(chan string)
 	done := make(chan struct{})
-	timeout := 15 * time.Second
+	timeout := 2 * time.Second
 
 	go printLn(stdout, done)
-	diff(cmd, timeout, i, stdout, done, diffUtils{})
+	diff(cmd, timeout, i, stdout, diffUtils{})
+	<-done
 }

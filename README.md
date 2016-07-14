@@ -24,7 +24,6 @@ $ echo "1" && sleep 1 && echo "2" | differ 'sleep 1 && echo "2"'
 
 ## TODO
 
-- diff *while* reading stdin
 - separate timeouts for stdin and command
 - optional timeout for stdin
 - output uniques

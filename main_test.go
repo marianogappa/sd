@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"reflect"
 	"sort"
 	"strings"
@@ -19,11 +18,8 @@ two`
 
 	scanToChannel(from, to, cancel)
 
-	log.Println("1")
 	line1 := <-to
-	log.Println("2")
 	line2 := <-to
-	log.Println("3")
 
 	if line1 != "one" {
 		t.Error("first line wasn't 'one'")
@@ -153,5 +149,39 @@ loop:
 	sort.Strings(lines) // order is not deterministic
 	if reflect.DeepEqual(lines, []string{"five", "four", "three"}) != true {
 		t.Errorf("result wasn't ['five', 'four', 'three'], it was %v", lines)
+	}
+}
+
+func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
+	i := make(chan string)
+	stdout := make(chan string)
+
+	go diff(`echo "one" && sleep .1 && echo "two" && sleep .1 && echo "three" && sleep .1 && echo "four" && sleep .1 && echo "ten"`,
+		200*time.Millisecond, i, stdout, mockUtils{})
+
+	i <- "one"
+	i <- "two"
+	i <- "five"
+	i <- "three"
+	i <- "four"
+	i <- "six"
+
+	lines := []string{}
+loop:
+	for {
+		select {
+		case line, ok := <-stdout:
+			if !ok {
+				break loop
+			}
+			lines = append(lines, line)
+		case <-time.After(1 * time.Second):
+			break loop
+		}
+	}
+	sort.Strings(lines) // order is not deterministic
+
+	if reflect.DeepEqual(lines, []string{"five", "six"}) != true {
+		t.Errorf("result wasn't ['five', 'six'], it was %v", lines)
 	}
 }

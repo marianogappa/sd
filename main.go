@@ -175,9 +175,10 @@ func printLn(stdout chan string, done chan struct{}) {
 	close(done)
 }
 
-func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, i chan string, stdout chan string, utils iDiffUtils) {
+func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan string, utils iDiffUtils) {
 	var diffee []string
 
+	i := make(chan string)
 	o := make(chan string)
 	start := make(chan struct{})
 	cancelCmd := make(chan struct{})
@@ -185,6 +186,8 @@ func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, i chan string, s
 
 	stdinFinished := false
 	cmdFinished := false
+	canceledStdin := false
+	canceledCmd := false
 
 	go utils.scanStdinToChannel(i, cancelStdin)
 	go readCmd(cmd, o, cancelCmd)
@@ -223,9 +226,15 @@ loop:
 				cmdTimeout.Reset()
 			}
 		case <-*stdinTimeout.c:
-			close(cancelStdin)
+			if !canceledStdin {
+				close(cancelStdin)
+				canceledStdin = true
+			}
 		case <-*cmdTimeout.c:
-			close(cancelCmd)
+			if !canceledCmd {
+				close(cancelCmd)
+				canceledCmd = true
+			}
 		}
 	}
 	wg.Wait()
@@ -240,11 +249,10 @@ func main() {
 	stdinTimeout, cmdTimeout := mustResolveTimeouts(mustResolveOptions())
 	cmd := os.Args[len(os.Args)-1]
 
-	i := make(chan string)
 	stdout := make(chan string)
 	done := make(chan struct{})
 
 	go printLn(stdout, done)
-	diff(cmd, stdinTimeout, cmdTimeout, i, stdout, diffUtils{})
+	diff(cmd, stdinTimeout, cmdTimeout, stdout, diffUtils{})
 	<-done
 }

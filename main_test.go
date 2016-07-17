@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"reflect"
 	"sort"
 	"strings"
@@ -39,19 +40,23 @@ func TestReadCmd(t *testing.T) {
 	}
 }
 
-type mockUtils struct{}
+type mockUtils struct {
+	i io.Reader
+}
 
-func (m mockUtils) scanStdinToChannel(i chan string) {}
+func (m mockUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
+	scanToChannel(m.i, i, cancel)
+}
 
 func TestDiff(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
+	stdin := `1
+2
+3
+4`
+	reader := strings.NewReader(stdin)
 
-	go diff(`echo -e "1\n2"`, 100*time.Millisecond, i, stdout, mockUtils{})
-	i <- "1"
-	i <- "2"
-	i <- "3"
-	i <- "4"
+	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -61,22 +66,26 @@ func TestDiff(t *testing.T) {
 }
 
 func TestDiffWhenInputTimesOut(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo -e "1\n2"`, 100*time.Millisecond, i, stdout, mockUtils{})
-
-	go func() {
-		i <- "1"
-		i <- "3"
-		i <- "3"
-		i <- "3"
-		i <- "1"
-		i <- "2"
-		i <- "4"
-		time.Sleep(101 * time.Millisecond)
-		i <- "5"
+	reader := func() io.Reader {
+		reader, writer := io.Pipe()
+		go func() {
+			io.WriteString(writer, "1\n")
+			io.WriteString(writer, "3\n")
+			io.WriteString(writer, "3\n")
+			io.WriteString(writer, "3\n")
+			io.WriteString(writer, "1\n")
+			io.WriteString(writer, "2\n")
+			io.WriteString(writer, "4\n")
+			time.Sleep(101 * time.Millisecond)
+			io.WriteString(writer, "5\n")
+			writer.Close()
+		}()
+		return reader
 	}()
+
+	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -87,16 +96,15 @@ func TestDiffWhenInputTimesOut(t *testing.T) {
 }
 
 func TestDiffWhenOutputTimesOut(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
+	stdin := `1
+2
+3
+4
+5`
+	reader := strings.NewReader(stdin)
 
-	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, 100*time.Millisecond, i, stdout, mockUtils{})
-
-	i <- "1"
-	i <- "2"
-	i <- "3"
-	i <- "4"
-	i <- "5"
+	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -106,18 +114,17 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 }
 
 func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
+	stdin := `1
+2
+3
+4
+5
+6`
+	reader := strings.NewReader(stdin)
 
 	go diff(`echo "1" && sleep .1 && echo "2" && sleep .1 && echo "3" && sleep .1 && echo "4" && sleep .1 && echo "ten"`,
-		200*time.Millisecond, i, stdout, mockUtils{})
-
-	i <- "1"
-	i <- "2"
-	i <- "5"
-	i <- "3"
-	i <- "4"
-	i <- "6"
+		defaultTimeout(), timeout{firstTime: 200 * time.Millisecond, time: 200 * time.Millisecond}, stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -146,13 +153,13 @@ loop:
 }
 
 func TestEmptyCommand(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo ""`, 100*time.Millisecond, i, stdout, mockUtils{})
-	i <- "1"
-	i <- "2"
-	i <- "3"
+	stdin := `1
+2
+3`
+	reader := strings.NewReader(stdin)
+	go diff(`echo ""`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -162,14 +169,17 @@ func TestEmptyCommand(t *testing.T) {
 }
 
 func TestEmptyStdin(t *testing.T) {
-	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo "1\n2\n3"`, 100*time.Millisecond, i, stdout, mockUtils{})
+	go diff(`echo "1\n2\n3"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{strings.NewReader(``)})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
 	if reflect.DeepEqual(lines, []string{}) != true {
 		t.Errorf("result wasn't [], it was %v", lines)
 	}
+}
+
+func defaultTimeout() timeout {
+	return timeout{firstTime: 100 * time.Millisecond, time: 100 * time.Millisecond}
 }

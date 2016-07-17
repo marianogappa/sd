@@ -24,7 +24,13 @@ sd [options] 'command'
 
 Examples
 
-	echo -e "1\n2\n3\n4\n5" | sd 'echo -e "2\n4"'
+  echo -e "1\n2\n3\n4\n5" | sd 'echo -e "2\n4"'
+
+  while [ 0 ]; do echo $RANDOM; sleep .1; done | sd -h 1 'seq 500'
+
+  mysql schema_1 -Nsr -e "SELECT city FROM users" | sd -h 120 mysql schema_2 -Nsr -e "SELECT city FROM excluded_cities"
+
+  mysql -Nsr -e "SELECT city FROM users" | sd -p 0 -t 10 kafka_consumer --topic excluded_cities > active_cities.txt 
 
 Options
 

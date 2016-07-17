@@ -144,3 +144,32 @@ loop:
 
 	return lines
 }
+
+func TestEmptyCommand(t *testing.T) {
+	i := make(chan string)
+	stdout := make(chan string)
+
+	go diff(`echo ""`, 100*time.Millisecond, i, stdout, mockUtils{})
+	i <- "1"
+	i <- "2"
+	i <- "3"
+
+	lines := readAndSortBlocking(stdout, 1*time.Second)
+
+	if reflect.DeepEqual(lines, []string{"1", "2", "3"}) != true {
+		t.Errorf("result wasn't ['1', '2', '3'], it was %v", lines)
+	}
+}
+
+func TestEmptyStdin(t *testing.T) {
+	i := make(chan string)
+	stdout := make(chan string)
+
+	go diff(`echo "1\n2\n3"`, 100*time.Millisecond, i, stdout, mockUtils{})
+
+	lines := readAndSortBlocking(stdout, 1*time.Second)
+
+	if reflect.DeepEqual(lines, []string{}) != true {
+		t.Errorf("result wasn't [], it was %v", lines)
+	}
+}

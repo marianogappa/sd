@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,54 @@ type iDiffUtils interface {
 	scanStdinToChannel(to chan string)
 }
 type diffUtils struct{}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, `Usage:
+
+sd [options] 'command'
+
+Examples
+
+	echo -e "1\n2\n3\n4\n5" | sd 'echo -e "2\n4"'
+
+Options
+
+	-f --follow: keeps reading from STDIN until SIGINT (think tail -f).
+	-p --patience [%seconds%]: wait forever (or the specified seconds) for the first received line.
+	-t --timeout %seconds%: exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN).
+	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options
+
+`)
+	os.Exit(2)
+}
+
+func resolveOptions() (bool, int, int, int) {
+	if len(os.Args) < 2 {
+		usage()
+	}
+
+	followHelp := "keeps reading from STDIN until SIGINT (think tail -f)."
+	patienceHelp := "wait forever (or the specified seconds) for the first received line."
+	timeoutHelp := "exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN)."
+	hardTimeoutHelp := "exit(0) after the specified seconds (or earlier). Overrides all other options"
+
+	var follow bool
+	var patience, timeout, hardTimeout int
+
+	flag.BoolVar(&follow, "follow", false, followHelp)
+	flag.BoolVar(&follow, "f", false, followHelp)
+	flag.IntVar(&patience, "patience", 0, patienceHelp)
+	flag.IntVar(&patience, "p", 0, patienceHelp)
+	flag.IntVar(&timeout, "timeout", 0, timeoutHelp)
+	flag.IntVar(&timeout, "t", 0, timeoutHelp)
+	flag.IntVar(&hardTimeout, "hard-timeout", 0, hardTimeoutHelp)
+	flag.IntVar(&hardTimeout, "h", 0, hardTimeoutHelp)
+
+	flag.Usage = usage
+	flag.Parse()
+
+	return follow, patience, timeout, hardTimeout
+}
 
 func scanToChannel(from io.Reader, to chan string, cancel chan struct{}) {
 	scanner := bufio.NewScanner(from)
@@ -153,14 +202,17 @@ loop:
 }
 
 func main() {
+	// follow, patience, timeout, hardTimeout := resolveOptions()
+	_, _, timeout, _ := resolveOptions()
 	cmd := os.Args[1]
 
 	i := make(chan string)
 	stdout := make(chan string)
 	done := make(chan struct{})
-	timeout := 2 * time.Second
+	// timeout := 2 * time.Second
+	t := time.Duration(timeout) * time.Second
 
 	go printLn(stdout, done)
-	diff(cmd, timeout, i, stdout, diffUtils{})
+	diff(cmd, t, i, stdout, diffUtils{})
 	<-done
 }

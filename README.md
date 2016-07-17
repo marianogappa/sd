@@ -16,7 +16,8 @@ $ echo -e "1\n2\n3\n4\n5" | sd 'echo -e "2\n4"'
 
 But both `STDIN` and `COMMAND` can be lengthy operations or infinite streams, like:
 ```
-$ for i in {1..1000}; do ( if [[ $(( $RANDOM % 10)) -eq 0 ]] ; then echo "n" ; else echo "y"; fi; sleep .1; ); done | ./sd -h 1 yes
+$ for i in {1..100}; do ( if [[ $(($RANDOM%10)) -eq 0 ]]; then echo "n"; fi; ); done | ./sd -h 1 yes
+n
 n
 n
 ...
@@ -33,11 +34,11 @@ while :; do echo $RANDOM; sleep .1; done | sd -h 1 'seq 500'
 ```
 
 ```
-mysql schema_1 -Nsr -e "SELECT city FROM users" | sd -h 120 mysql schema_2 -Nsr -e "SELECT city FROM excluded_cities"
+mysql db1 -Nsre "SELECT city FROM user" | sd -h 120 mysql db2 -Nsre "SELECT city FROM excluded_city"
 ```
 
 ```
-mysql -Nsr -e "SELECT city FROM users" | sd -p 0 -t 10 kafka_consumer --topic excluded_cities > active_cities.txt
+mysql -Nsre "SELECT city FROM user" | sd -p 0 -t 10 kafka_consumer --topic excluded_city > city.txt
 ```
 
 ## Options

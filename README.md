@@ -28,4 +28,3 @@ $ echo "1" && sleep 1 && echo "2" | sd 'sleep 1 && echo "2"'
 - optional timeout for stdin
 - output uniques
 - take all parameters from flags
-- test for sleeping for less than timeout in between sends, repeatedly

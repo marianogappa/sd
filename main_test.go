@@ -9,8 +9,8 @@ import (
 )
 
 func TestScanToChannel(t *testing.T) {
-	stdin := `one
-two`
+	stdin := `1
+2`
 
 	from := strings.NewReader(stdin)
 	to := make(chan string, 2)
@@ -20,13 +20,13 @@ two`
 
 	lines := readAndSortBlocking(to, 1*time.Second)
 
-	if reflect.DeepEqual(lines, []string{"one", "two"}) != true {
-		t.Errorf("result wasn't ['one', 'two'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"1", "2"}) != true {
+		t.Errorf("result wasn't ['1', '2'], it was %v", lines)
 	}
 }
 
 func TestReadCmd(t *testing.T) {
-	cmdString := `echo -e "one\ntwo"`
+	cmdString := `echo -e "1\n2"`
 	o := make(chan string, 2)
 	cancel := make(chan struct{})
 
@@ -34,8 +34,8 @@ func TestReadCmd(t *testing.T) {
 
 	lines := readAndSortBlocking(o, 1*time.Second)
 
-	if reflect.DeepEqual(lines, []string{"one", "two"}) != true {
-		t.Errorf("result wasn't ['one', 'two'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"1", "2"}) != true {
+		t.Errorf("result wasn't ['1', '2'], it was %v", lines)
 	}
 }
 
@@ -47,16 +47,16 @@ func TestDiff(t *testing.T) {
 	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo -e "one\ntwo"`, 100*time.Millisecond, i, stdout, mockUtils{})
-	i <- "one"
-	i <- "two"
-	i <- "three"
-	i <- "four"
+	go diff(`echo -e "1\n2"`, 100*time.Millisecond, i, stdout, mockUtils{})
+	i <- "1"
+	i <- "2"
+	i <- "3"
+	i <- "4"
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
-	if reflect.DeepEqual(lines, []string{"four", "three"}) != true {
-		t.Errorf("lines weren't ['four', 'three'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"3", "4"}) != true {
+		t.Errorf("lines weren't ['3', '4'], it was %v", lines)
 	}
 }
 
@@ -64,25 +64,25 @@ func TestDiffWhenInputTimesOut(t *testing.T) {
 	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo -e "one\ntwo"`, 100*time.Millisecond, i, stdout, mockUtils{})
+	go diff(`echo -e "1\n2"`, 100*time.Millisecond, i, stdout, mockUtils{})
 
 	go func() {
-		i <- "one"
-		i <- "three"
-		i <- "three"
-		i <- "three"
-		i <- "one"
-		i <- "two"
-		i <- "four"
+		i <- "1"
+		i <- "3"
+		i <- "3"
+		i <- "3"
+		i <- "1"
+		i <- "2"
+		i <- "4"
 		time.Sleep(101 * time.Millisecond)
-		i <- "five"
+		i <- "5"
 	}()
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
 	sort.Strings(lines) // order is not deterministic
-	if reflect.DeepEqual(lines, []string{"four", "three", "three", "three"}) != true {
-		t.Errorf("result wasn't ['four', 'three', 'three', 'three'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"3", "3", "3", "4"}) != true {
+		t.Errorf("result wasn't ['3', '3', '3', '4'], it was %v", lines)
 	}
 }
 
@@ -90,18 +90,18 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo -e "one\ntwo" && sleep 1 && echo -e "three\nfour"`, 100*time.Millisecond, i, stdout, mockUtils{})
+	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, 100*time.Millisecond, i, stdout, mockUtils{})
 
-	i <- "one"
-	i <- "two"
-	i <- "three"
-	i <- "four"
-	i <- "five"
+	i <- "1"
+	i <- "2"
+	i <- "3"
+	i <- "4"
+	i <- "5"
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
-	if reflect.DeepEqual(lines, []string{"five", "four", "three"}) != true {
-		t.Errorf("result wasn't ['five', 'four', 'three'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"3", "4", "5"}) != true {
+		t.Errorf("result wasn't ['3', '4', '5'], it was %v", lines)
 	}
 }
 
@@ -109,20 +109,20 @@ func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 	i := make(chan string)
 	stdout := make(chan string)
 
-	go diff(`echo "one" && sleep .1 && echo "two" && sleep .1 && echo "three" && sleep .1 && echo "four" && sleep .1 && echo "ten"`,
+	go diff(`echo "1" && sleep .1 && echo "2" && sleep .1 && echo "3" && sleep .1 && echo "4" && sleep .1 && echo "ten"`,
 		200*time.Millisecond, i, stdout, mockUtils{})
 
-	i <- "one"
-	i <- "two"
-	i <- "five"
-	i <- "three"
-	i <- "four"
-	i <- "six"
+	i <- "1"
+	i <- "2"
+	i <- "5"
+	i <- "3"
+	i <- "4"
+	i <- "6"
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
-	if reflect.DeepEqual(lines, []string{"five", "six"}) != true {
-		t.Errorf("result wasn't ['five', 'six'], it was %v", lines)
+	if reflect.DeepEqual(lines, []string{"5", "6"}) != true {
+		t.Errorf("result wasn't ['5', '6'], it was %v", lines)
 	}
 }
 

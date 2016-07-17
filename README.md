@@ -1,7 +1,7 @@
 # sd - Stream Diff
 
 ```
-sd [options] 'command'
+sd [OPTIONS] 'COMMAND'
 ```
 
 ## What does it do?
@@ -14,7 +14,7 @@ $ echo -e "1\n2\n3\n4\n5" | sd 'echo -e "2\n4"'
 5
 ```
 
-But both STDIN and `command` can be lengthy operations or infinite streams, like:
+But both `STDIN` and `COMMAND` can be lengthy operations or infinite streams, like:
 ```
 $ for i in {1..1000}; do ( if [[ $(( $RANDOM % 10)) -eq 0 ]] ; then echo "n" ; else echo "y"; fi; sleep .1; ); done | ./sd -h 1 yes
 n
@@ -52,7 +52,7 @@ wait for the specified seconds for the first received line. Use `0` for waiting 
 
 **-t --timeout %seconds%**
 
-`exit(0)` after specified seconds from last received line. `STDIN` and `command` have independent timeouts. When with `-f`, timeout only applies to `command` (not to `STDIN`).
+`exit(0)` after specified seconds from last received line. `STDIN` and `COMMAND` have independent timeouts. When with `-f`, timeout only applies to `COMMAND` (not to `STDIN`).
 
 **-h --hard-timeout %seconds%**
 

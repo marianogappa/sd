@@ -9,23 +9,19 @@ import (
 )
 
 func TestScanToChannel(t *testing.T) {
-	lines := `one
+	stdin := `one
 two`
 
-	from := strings.NewReader(lines)
+	from := strings.NewReader(stdin)
 	to := make(chan string, 2)
 	cancel := make(chan struct{})
 
 	scanToChannel(from, to, cancel)
 
-	line1 := <-to
-	line2 := <-to
+	lines := readAndSortBlocking(to, 1*time.Second)
 
-	if line1 != "one" {
-		t.Error("first line wasn't 'one'")
-	}
-	if line2 != "two" {
-		t.Error("second line wasn't 'two'")
+	if reflect.DeepEqual(lines, []string{"one", "two"}) != true {
+		t.Errorf("result wasn't ['one', 'two'], it was %v", lines)
 	}
 }
 
@@ -36,14 +32,10 @@ func TestReadCmd(t *testing.T) {
 
 	readCmd(cmdString, o, cancel)
 
-	line1 := <-o
-	line2 := <-o
+	lines := readAndSortBlocking(o, 1*time.Second)
 
-	if line1 != "one" {
-		t.Error("first line wasn't 'one'")
-	}
-	if line2 != "two" {
-		t.Error("second line wasn't 'two'")
+	if reflect.DeepEqual(lines, []string{"one", "two"}) != true {
+		t.Errorf("result wasn't ['one', 'two'], it was %v", lines)
 	}
 }
 
@@ -61,21 +53,7 @@ func TestDiff(t *testing.T) {
 	i <- "three"
 	i <- "four"
 
-	lines := []string{}
-loop:
-	for {
-		select {
-		case line, ok := <-stdout:
-			if !ok {
-				break loop
-			}
-			lines = append(lines, line)
-		case <-time.After(1 * time.Second):
-			break loop
-		}
-	}
-
-	sort.Strings(lines) // order is not deterministic
+	lines := readAndSortBlocking(stdout, 1*time.Second)
 
 	if reflect.DeepEqual(lines, []string{"four", "three"}) != true {
 		t.Errorf("lines weren't ['four', 'three'], it was %v", lines)
@@ -100,19 +78,7 @@ func TestDiffWhenInputTimesOut(t *testing.T) {
 		i <- "five"
 	}()
 
-	lines := []string{}
-loop:
-	for {
-		select {
-		case line, ok := <-stdout:
-			if !ok {
-				break loop
-			}
-			lines = append(lines, line)
-		case <-time.After(1 * time.Second):
-			break loop
-		}
-	}
+	lines := readAndSortBlocking(stdout, 1*time.Second)
 
 	sort.Strings(lines) // order is not deterministic
 	if reflect.DeepEqual(lines, []string{"four", "three", "three", "three"}) != true {
@@ -132,21 +98,8 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 	i <- "four"
 	i <- "five"
 
-	lines := []string{}
-loop:
-	for {
-		select {
-		case line, ok := <-stdout:
-			if !ok {
-				break loop
-			}
-			lines = append(lines, line)
-		case <-time.After(1 * time.Second):
-			break loop
-		}
-	}
+	lines := readAndSortBlocking(stdout, 1*time.Second)
 
-	sort.Strings(lines) // order is not deterministic
 	if reflect.DeepEqual(lines, []string{"five", "four", "three"}) != true {
 		t.Errorf("result wasn't ['five', 'four', 'three'], it was %v", lines)
 	}
@@ -166,22 +119,28 @@ func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 	i <- "four"
 	i <- "six"
 
+	lines := readAndSortBlocking(stdout, 1*time.Second)
+
+	if reflect.DeepEqual(lines, []string{"five", "six"}) != true {
+		t.Errorf("result wasn't ['five', 'six'], it was %v", lines)
+	}
+}
+
+func readAndSortBlocking(c chan string, timeout time.Duration) []string {
 	lines := []string{}
 loop:
 	for {
 		select {
-		case line, ok := <-stdout:
+		case line, ok := <-c:
 			if !ok {
 				break loop
 			}
 			lines = append(lines, line)
-		case <-time.After(1 * time.Second):
+		case <-time.After(timeout):
 			break loop
 		}
 	}
 	sort.Strings(lines) // order is not deterministic
 
-	if reflect.DeepEqual(lines, []string{"five", "six"}) != true {
-		t.Errorf("result wasn't ['five', 'six'], it was %v", lines)
-	}
+	return lines
 }

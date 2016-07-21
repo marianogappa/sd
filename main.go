@@ -175,68 +175,66 @@ func printLn(stdout chan string, done chan struct{}) {
 	close(done)
 }
 
+func processStdin(stdinCh chan string, diffee *[]string, stdinTimeout timeout, cancelStdin chan struct{}, start chan struct{}, stdout chan string, wg *sync.WaitGroup) {
+	stdinTimeout.Start()
+	var innerWg sync.WaitGroup
+
+loop:
+	for {
+		select {
+		case s, ok := <-stdinCh:
+			if !ok {
+				break loop
+			}
+			innerWg.Add(1)
+			go diffLine(s, stdout, diffee, start, &innerWg)
+			stdinTimeout.Reset()
+		case <-*stdinTimeout.c:
+			close(cancelStdin)
+			break loop
+		}
+	}
+
+	innerWg.Wait()
+	wg.Done()
+}
+
+func processCmd(cmdCh chan string, diffee *[]string, cmdTimeout timeout, cancelCmd chan struct{}, start chan struct{}, wg *sync.WaitGroup) {
+	cmdTimeout.Start()
+	for {
+		select {
+		case s, ok := <-cmdCh:
+			if !ok {
+				close(start)
+				wg.Done()
+				return
+			}
+			*diffee = append(*diffee, s)
+			cmdTimeout.Reset()
+		case <-*cmdTimeout.c:
+			close(cancelCmd)
+		}
+	}
+}
+
 func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan string, utils iDiffUtils) {
 	var diffee []string
 
-	i := make(chan string)
-	o := make(chan string)
+	stdinCh := make(chan string)
+	cmdCh := make(chan string)
 	start := make(chan struct{})
 	cancelCmd := make(chan struct{})
 	cancelStdin := make(chan struct{})
 
-	stdinFinished := false
-	cmdFinished := false
-	canceledStdin := false
-	canceledCmd := false
-
-	go utils.scanStdinToChannel(i, cancelStdin)
-	go readCmd(cmd, o, cancelCmd)
+	go utils.scanStdinToChannel(stdinCh, cancelStdin)
+	go readCmd(cmd, cmdCh, cancelCmd)
 
 	var wg sync.WaitGroup
+	wg.Add(2)
 
-	cmdTimeout.Start()
-	stdinTimeout.Start()
-loop:
-	for {
-		select {
-		case s, ok := <-i:
-			if !stdinFinished {
-				if !ok {
-					stdinFinished = true
-					if cmdFinished {
-						break loop
-					}
-					continue
-				}
-				wg.Add(1)
-				go diffLine(s, stdout, &diffee, start, &wg)
-				stdinTimeout.Reset()
-			}
-		case s, ok := <-o:
-			if !cmdFinished {
-				if !ok {
-					cmdFinished = true
-					close(start)
-					if stdinFinished {
-						break loop
-					}
-					continue
-				}
-				diffee = append(diffee, s)
-				cmdTimeout.Reset()
-			}
-		case <-*stdinTimeout.c:
-			if !canceledStdin {
-				close(cancelStdin)
-				canceledStdin = true
-			}
-		case <-*cmdTimeout.c:
-			if !canceledCmd {
-				close(cancelCmd)
-				canceledCmd = true
-			}
-		}
-	}
+	go processStdin(stdinCh, &diffee, stdinTimeout, cancelStdin, start, stdout, &wg)
+	go processCmd(cmdCh, &diffee, cmdTimeout, cancelCmd, start, &wg)
+
 	wg.Wait()
 	close(stdout)
 }

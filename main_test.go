@@ -61,7 +61,7 @@ func TestDiff(t *testing.T) {
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
 	if reflect.DeepEqual(lines, []string{"3", "4"}) != true {
-		t.Errorf("lines weren't ['3', '4'], it was %v", lines)
+		t.Errorf("result wasn't ['3', '4'], it was %v", lines)
 	}
 }
 

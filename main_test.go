@@ -42,14 +42,6 @@ func TestReadCmd(t *testing.T) {
 	}
 }
 
-type mockUtils struct {
-	i io.Reader
-}
-
-func (m mockUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
-	scanToChannel(m.i, i, cancel)
-}
-
 func TestDiff(t *testing.T) {
 	stdout := make(chan string)
 	reader := cmdToReader(`echo -e "1\n2\n3\n4"`)
@@ -105,25 +97,6 @@ func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 	}
 }
 
-func readAndSortBlocking(c chan string, timeout time.Duration) []string {
-	lines := []string{}
-loop:
-	for {
-		select {
-		case line, ok := <-c:
-			if !ok {
-				break loop
-			}
-			lines = append(lines, line)
-		case <-time.After(timeout):
-			break loop
-		}
-	}
-	sort.Strings(lines) // order is not deterministic
-
-	return lines
-}
-
 func TestEmptyCommand(t *testing.T) {
 	stdout := make(chan string)
 
@@ -166,4 +139,31 @@ func cmdToReader(cmdString string) io.Reader {
 	}
 
 	return stdout
+}
+
+func readAndSortBlocking(c chan string, timeout time.Duration) []string {
+	lines := []string{}
+loop:
+	for {
+		select {
+		case line, ok := <-c:
+			if !ok {
+				break loop
+			}
+			lines = append(lines, line)
+		case <-time.After(timeout):
+			break loop
+		}
+	}
+	sort.Strings(lines) // order is not deterministic
+
+	return lines
+}
+
+type mockUtils struct {
+	i io.Reader
+}
+
+func (m mockUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
+	scanToChannel(m.i, i, cancel)
 }

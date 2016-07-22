@@ -62,3 +62,4 @@ wait for the specified seconds for the first received line. Use `0` for waiting 
 ## TODO
 
 - output uniques
+- investigate early timeout bug for cmd

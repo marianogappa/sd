@@ -2,6 +2,8 @@ package main
 
 import (
 	"io"
+	"log"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strings"
@@ -50,11 +52,7 @@ func (m mockUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
 
 func TestDiff(t *testing.T) {
 	stdout := make(chan string)
-	stdin := `1
-2
-3
-4`
-	reader := strings.NewReader(stdin)
+	reader := cmdToReader(`echo -e "1\n2\n3\n4"`)
 
 	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
@@ -68,22 +66,7 @@ func TestDiff(t *testing.T) {
 func TestDiffWhenInputTimesOut(t *testing.T) {
 	stdout := make(chan string)
 
-	reader := func() io.Reader {
-		reader, writer := io.Pipe()
-		go func() {
-			io.WriteString(writer, "1\n")
-			io.WriteString(writer, "3\n")
-			io.WriteString(writer, "3\n")
-			io.WriteString(writer, "3\n")
-			io.WriteString(writer, "1\n")
-			io.WriteString(writer, "2\n")
-			io.WriteString(writer, "4\n")
-			time.Sleep(101 * time.Millisecond)
-			io.WriteString(writer, "5\n")
-			writer.Close()
-		}()
-		return reader
-	}()
+	reader := cmdToReader(`echo -e "1\n3\n3\n3\n1\n2\n4" && sleep .101 && echo "5"`)
 
 	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
@@ -97,12 +80,7 @@ func TestDiffWhenInputTimesOut(t *testing.T) {
 
 func TestDiffWhenOutputTimesOut(t *testing.T) {
 	stdout := make(chan string)
-	stdin := `1
-2
-3
-4
-5`
-	reader := strings.NewReader(stdin)
+	reader := cmdToReader(`echo -e "1\n2\n3\n4\n5"`)
 
 	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
@@ -115,13 +93,7 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 
 func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 	stdout := make(chan string)
-	stdin := `1
-2
-3
-4
-5
-6`
-	reader := strings.NewReader(stdin)
+	reader := cmdToReader(`echo -e "1\n2\n3\n4\n5\n6"`)
 
 	go diff(`echo "1" && sleep .1 && echo "2" && sleep .1 && echo "3" && sleep .1 && echo "4" && sleep .1 && echo "ten"`,
 		defaultTimeout(), timeout{firstTime: 200 * time.Millisecond, time: 200 * time.Millisecond}, stdout, mockUtils{reader})
@@ -155,10 +127,7 @@ loop:
 func TestEmptyCommand(t *testing.T) {
 	stdout := make(chan string)
 
-	stdin := `1
-2
-3`
-	reader := strings.NewReader(stdin)
+	reader := cmdToReader(`echo -e "1\n2\n3"`)
 	go diff(`echo ""`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
@@ -182,4 +151,19 @@ func TestEmptyStdin(t *testing.T) {
 
 func defaultTimeout() timeout {
 	return timeout{firstTime: 100 * time.Millisecond, time: 100 * time.Millisecond}
+}
+
+func cmdToReader(cmdString string) io.Reader {
+	cmd := exec.Command("bash", "-c", cmdString)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	return stdout
 }

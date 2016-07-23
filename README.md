@@ -22,6 +22,15 @@ wait for the specified seconds for the first received line. Use `0` for waiting 
 
 `exit(0)` after the specified seconds (or earlier). Overrides all other options.
 
+## Installing
+
+Find the latest binaries for your OS in the [Releases](https://github.com/MarianoGappa/sd/releases/) section.
+
+Or via Go:
+```
+go install github.com/MarianoGappa/sd
+```
+
 ## What does it do?
 
 In principle, this:

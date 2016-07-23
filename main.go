@@ -46,7 +46,7 @@ func (d diffUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
 }
 
 func readCmd(cmdString string, o chan string, cancel chan struct{}) {
-	cmd := exec.Command("bash", "-c", cmdString)
+	cmd := exec.Command("/bin/bash", "-c", cmdString)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

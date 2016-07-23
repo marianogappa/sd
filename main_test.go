@@ -83,6 +83,18 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 	}
 }
 
+func TestExpensiveTestCase(t *testing.T) {
+	stdout := make(chan string)
+	reader := cmdToReader(`seq 10000`)
+	go diff(`seq 5001 10000`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+
+	lines := readAndSortBlocking(stdout, 1*time.Second)
+
+	if len(lines) != 5000 {
+		t.Errorf("result didn't have 5000 lines, it had %v", len(lines))
+	}
+}
+
 func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 	stdout := make(chan string)
 	reader := cmdToReader(`echo -e "1\n2\n3\n4\n5\n6"`)
@@ -127,7 +139,7 @@ func defaultTimeout() timeout {
 }
 
 func cmdToReader(cmdString string) io.Reader {
-	cmd := exec.Command("bash", "-c", cmdString)
+	cmd := exec.Command("/bin/bash", "-c", cmdString)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

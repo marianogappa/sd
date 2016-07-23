@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -46,7 +47,9 @@ func (d diffUtils) scanStdinToChannel(i chan string, cancel chan struct{}) {
 }
 
 func readCmd(cmdString string, o chan string, cancel chan struct{}) {
+	var stderr bytes.Buffer
 	cmd := exec.Command("/bin/bash", "-c", cmdString)
+	cmd.Stderr = &stderr
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -58,10 +61,6 @@ func readCmd(cmdString string, o chan string, cancel chan struct{}) {
 	}
 
 	go scanToChannel(stdout, o, cancel)
-
-	if err := cmd.Wait(); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func diffLine(v string, stdout chan string, diffee *[]string, start chan struct{}, wg *sync.WaitGroup) {

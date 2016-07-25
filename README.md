@@ -35,9 +35,8 @@ go install github.com/MarianoGappa/sd
 
 `sd` is very similar to [comm](https://en.wikipedia.org/wiki/Comm), but with two important differences:
 
-1. `comm` diffs files. `sd` can diff files, but it's meant for diffing streams; especially infinite ones. 
+1. `comm` diffs files. `sd` can diff files, but it's meant for diffing streams; especially infinite ones. (To be fair, `comm - file2` reads from STDIN which could be an infinite stream, but file2 has to end)
 2. `comm` requires the files to be sorted. `sd` doesn't; it compares each line in one stream to all lines in the other.
-(To be fair, `comm - file2` reads from STDIN which could be an infinite stream, but file2 has to end)
 
 A closer approximation to `sd` is `grep -Fxvf` (which doesn't require sorting), again with two important differences:
 

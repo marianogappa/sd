@@ -24,7 +24,8 @@ Examples
 
 Options
 
-	-f --follow: keeps reading from STDIN until SIGINT (think tail -f).
+	-f --follow: keeps reading from STDIN until SIGINT or its end.
+	-i --infinite: keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing.
 	-p --patience %seconds%: wait for the specified seconds for the first received line. Use 0 for waiting forever.
 	-t --timeout %seconds%: exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN).
 	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options
@@ -33,17 +34,20 @@ Options
 	os.Exit(2)
 }
 
-func mustResolveOptions() (bool, int, int, int) {
-	followHelp := "keeps reading from STDIN until SIGINT (think tail -f)."
-	patienceHelp := "wait for the specified seconds for the first received line. Use 0 for waiting forever"
+func mustResolveOptions() (bool, bool, int, int, int) {
+	followHelp := "keeps reading from STDIN until SIGINT or its end."
+	infiniteHelp := "keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing."
+	patienceHelp := "wait for the specified seconds for the first received line. Use 0 for waiting forever."
 	timeoutHelp := "exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN)."
-	hardTimeoutHelp := "exit(0) after the specified seconds (or earlier). Overrides all other options"
+	hardTimeoutHelp := "exit(0) after the specified seconds (or earlier). Overrides all other options."
 
-	var follow bool
+	var follow, infinite bool
 	var patience, timeout, hardTimeout int
 
 	flag.BoolVar(&follow, "follow", false, followHelp)
 	flag.BoolVar(&follow, "f", false, followHelp)
+	flag.BoolVar(&infinite, "infinite", false, infiniteHelp)
+	flag.BoolVar(&infinite, "i", false, infiniteHelp)
 	flag.IntVar(&patience, "patience", -1, patienceHelp)
 	flag.IntVar(&patience, "p", -1, patienceHelp)
 	flag.IntVar(&timeout, "timeout", 10, timeoutHelp)
@@ -54,14 +58,18 @@ func mustResolveOptions() (bool, int, int, int) {
 	flag.Usage = usage
 	flag.Parse()
 
-	return follow, patience, timeout, hardTimeout
+	return follow, infinite, patience, timeout, hardTimeout
 }
 
-func mustResolveTimeouts(follow bool, patience int, timeoutF int, hardTimeout int) (timeout, timeout) {
+func mustResolveTimeouts(follow bool, infinite bool, patience int, timeoutF int, hardTimeout int) (timeout, timeout) {
 	var stdinTimeout, cmdTimeout timeout
 
 	if follow {
 		stdinTimeout.infinite = true
+	}
+
+	if infinite {
+		cmdTimeout.infinite = true
 	}
 
 	if patience == 0 {

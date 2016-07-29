@@ -28,13 +28,13 @@ Options
 	-i --infinite: keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing.
 	-p --patience %seconds%: wait for the specified seconds for the first received line. Use 0 for waiting forever.
 	-t --timeout %seconds%: exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN).
-	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options
+	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options.
 
 `)
 	os.Exit(2)
 }
 
-func mustResolveOptions() (bool, bool, int, int, int) {
+func mustResolveOptions(args []string) (bool, bool, int, int, int) {
 	followHelp := "keeps reading from STDIN until SIGINT or its end."
 	infiniteHelp := "keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing."
 	patienceHelp := "wait for the specified seconds for the first received line. Use 0 for waiting forever."
@@ -56,7 +56,7 @@ func mustResolveOptions() (bool, bool, int, int, int) {
 	flag.IntVar(&hardTimeout, "h", 0, hardTimeoutHelp)
 
 	flag.Usage = usage
-	flag.Parse()
+	flag.CommandLine.Parse(args)
 
 	return follow, infinite, patience, timeout, hardTimeout
 }

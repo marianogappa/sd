@@ -155,12 +155,15 @@ func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan stri
 	close(stdout)
 }
 
+var args []string
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
 	}
+	args := os.Args[1:]
 
-	stdinTimeout, cmdTimeout := mustResolveTimeouts(mustResolveOptions())
+	stdinTimeout, cmdTimeout := mustResolveTimeouts(mustResolveOptions(args))
 	cmd := os.Args[len(os.Args)-1]
 
 	stdout := make(chan string)

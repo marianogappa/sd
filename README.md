@@ -1,6 +1,9 @@
 # sd - Stream Diff
 Diffs two streams of line-separated strings, timing them out if necessary.
 
+[![Build Status](https://img.shields.io/travis/MarianoGappa/sd.svg)](https://travis-ci.org/MarianoGappa/sd)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/MarianoGappa/sd/master/LICENSE)
+
 ```
 sd [OPTIONS] 'COMMAND'
 ```

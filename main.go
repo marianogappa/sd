@@ -60,7 +60,10 @@ func readCmd(cmdString string, o chan string, cancel chan struct{}) {
 		log.Fatal(err)
 	}
 
-	go scanToChannel(stdout, o, cancel)
+	go func() {
+		scanToChannel(stdout, o, cancel)
+		cmd.Process.Kill()
+	}()
 }
 
 func diffLine(v string, stdout chan string, diffee *[]string, start chan struct{}, wg *sync.WaitGroup) {

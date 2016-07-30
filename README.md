@@ -10,15 +10,15 @@ sd [OPTIONS] 'COMMAND'
 ```
 ## Options
 
-**-f --follow** keeps reading from STDIN until SIGINT or its end.
+**-f --follow** keeps reading from `STDIN` until `SIGINT` or its end.
 
-**-i --infinite** keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing.
+**-i --infinite** keeps reading from `COMMAND` until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing.
 
 **-p --patience %seconds%** wait for the specified seconds for the first received line. Use 0 for waiting forever.
 
-**-t --timeout %seconds%** exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN).
+**-t --timeout %seconds%** `exit(0)` after specified seconds from last received line. `STDIN` and `COMMAND` have independent timeouts. When with `-f`, timeout only applies to `COMMAND` (not to `STDIN`).
 
-**-h --hard-timeout %seconds%** exit(0) after the specified seconds (or earlier). Overrides all other options.
+**-h --hard-timeout %seconds%** `exit(0)` after the specified seconds (or earlier). Overrides all other options.
 
 ## Installing
 

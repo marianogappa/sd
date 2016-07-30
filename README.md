@@ -2,7 +2,7 @@
 Diffs two streams of line-separated strings, timing them out if necessary.
 
 [![Build Status](https://img.shields.io/travis/MarianoGappa/sd.svg)](https://travis-ci.org/MarianoGappa/sd)
-[![Coverage Status](https://coveralls.io/repos/github/MarianoGappa/sd/badge.svg?branch=master)](https://coveralls.io/github/MarianoGappa/sd?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/MarianoGappa/sd/badge.svg?branch=master&nocache=1)](https://coveralls.io/github/MarianoGappa/sd?branch=master)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/MarianoGappa/sd/master/LICENSE)
 
 ```

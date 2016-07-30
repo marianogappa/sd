@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -89,7 +90,7 @@ func resolveOptions(args []string) (*options, error) {
 func mustResolveOptions(args []string) *options {
 	o, err := resolveOptions(args)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	return o

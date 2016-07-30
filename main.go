@@ -163,7 +163,7 @@ func main() {
 	}
 	args := os.Args[1:]
 
-	stdinTimeout, cmdTimeout := mustResolveTimeouts(mustResolveOptions(args))
+	stdinTimeout, cmdTimeout := resolveTimeouts(mustResolveOptions(args))
 	cmd := os.Args[len(os.Args)-1]
 
 	stdout := make(chan string)

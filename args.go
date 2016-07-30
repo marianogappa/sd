@@ -31,66 +31,100 @@ Options
 	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options.
 
 `)
-	os.Exit(2)
 }
 
-func mustResolveOptions(args []string) (bool, bool, int, int, int) {
+type options struct {
+	follow      bool
+	infinite    bool
+	patience    int
+	timeoutF    int
+	hardTimeout int
+}
+
+func defineOptions(fs *flag.FlagSet) *options {
 	followHelp := "keeps reading from STDIN until SIGINT or its end."
 	infiniteHelp := "keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing."
 	patienceHelp := "wait for the specified seconds for the first received line. Use 0 for waiting forever."
 	timeoutHelp := "exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN)."
 	hardTimeoutHelp := "exit(0) after the specified seconds (or earlier). Overrides all other options."
 
-	var follow, infinite bool
-	var patience, timeout, hardTimeout int
+	var o options
+	setDefaultOptions(&o)
 
-	flag.BoolVar(&follow, "follow", false, followHelp)
-	flag.BoolVar(&follow, "f", false, followHelp)
-	flag.BoolVar(&infinite, "infinite", false, infiniteHelp)
-	flag.BoolVar(&infinite, "i", false, infiniteHelp)
-	flag.IntVar(&patience, "patience", -1, patienceHelp)
-	flag.IntVar(&patience, "p", -1, patienceHelp)
-	flag.IntVar(&timeout, "timeout", 10, timeoutHelp)
-	flag.IntVar(&timeout, "t", 10, timeoutHelp)
-	flag.IntVar(&hardTimeout, "hard-timeout", 0, hardTimeoutHelp)
-	flag.IntVar(&hardTimeout, "h", 0, hardTimeoutHelp)
+	fs.BoolVar(&o.follow, "follow", o.follow, followHelp)
+	fs.BoolVar(&o.follow, "f", o.follow, followHelp)
+	fs.BoolVar(&o.infinite, "infinite", o.infinite, infiniteHelp)
+	fs.BoolVar(&o.infinite, "i", o.infinite, infiniteHelp)
+	fs.IntVar(&o.patience, "patience", o.patience, patienceHelp)
+	fs.IntVar(&o.patience, "p", o.patience, patienceHelp)
+	fs.IntVar(&o.timeoutF, "timeout", o.timeoutF, timeoutHelp)
+	fs.IntVar(&o.timeoutF, "t", o.timeoutF, timeoutHelp)
+	fs.IntVar(&o.hardTimeout, "hard-timeout", o.hardTimeout, hardTimeoutHelp)
+	fs.IntVar(&o.hardTimeout, "h", o.hardTimeout, hardTimeoutHelp)
 
-	flag.Usage = usage
-	flag.CommandLine.Parse(args)
+	fs.Usage = usage
 
-	return follow, infinite, patience, timeout, hardTimeout
+	return &o
 }
 
-func mustResolveTimeouts(follow bool, infinite bool, patience int, timeoutF int, hardTimeout int) (timeout, timeout) {
+func setDefaultOptions(o *options) {
+	o.follow = false
+	o.infinite = false
+	o.patience = -1
+	o.timeoutF = 10
+	o.hardTimeout = 0
+}
+
+func resolveOptions(args []string) (*options, error) {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	o := defineOptions(fs)
+	err := fs.Parse(args)
+	if err != nil {
+		return o, err
+	}
+
+	return o, nil
+}
+
+func mustResolveOptions(args []string) *options {
+	o, err := resolveOptions(args)
+	if err != nil {
+		panic(err)
+	}
+
+	return o
+}
+
+func resolveTimeouts(options *options) (timeout, timeout) {
 	var stdinTimeout, cmdTimeout timeout
 
-	if follow {
+	if options.follow {
 		stdinTimeout.infinite = true
 	}
 
-	if infinite {
+	if options.infinite {
 		cmdTimeout.infinite = true
 	}
 
-	if patience == 0 {
+	if options.patience == 0 {
 		stdinTimeout.firstTimeInfinite = true
 		cmdTimeout.firstTimeInfinite = true
-	} else if patience == -1 {
-		stdinTimeout.firstTime = time.Duration(timeoutF) * time.Second
-		cmdTimeout.firstTime = time.Duration(timeoutF) * time.Second
+	} else if options.patience == -1 {
+		stdinTimeout.firstTime = time.Duration(options.timeoutF) * time.Second
+		cmdTimeout.firstTime = time.Duration(options.timeoutF) * time.Second
 	} else {
-		stdinTimeout.firstTime = time.Duration(patience) * time.Second
-		cmdTimeout.firstTime = time.Duration(patience) * time.Second
+		stdinTimeout.firstTime = time.Duration(options.patience) * time.Second
+		cmdTimeout.firstTime = time.Duration(options.patience) * time.Second
 	}
 
-	stdinTimeout.time = time.Duration(timeoutF) * time.Second
-	cmdTimeout.time = time.Duration(timeoutF) * time.Second
+	stdinTimeout.time = time.Duration(options.timeoutF) * time.Second
+	cmdTimeout.time = time.Duration(options.timeoutF) * time.Second
 
-	if hardTimeout > 0 {
+	if options.hardTimeout > 0 {
 		stdinTimeout.hard = true
 		cmdTimeout.hard = true
-		stdinTimeout.firstTime = time.Duration(hardTimeout) * time.Second
-		cmdTimeout.firstTime = time.Duration(hardTimeout) * time.Second
+		stdinTimeout.firstTime = time.Duration(options.hardTimeout) * time.Second
+		cmdTimeout.firstTime = time.Duration(options.hardTimeout) * time.Second
 	}
 
 	return stdinTimeout, cmdTimeout

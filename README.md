@@ -69,5 +69,6 @@ mysql -Nsre "SELECT city FROM user" | sd -p 0 -t 10 'kafka_consumer --topic excl
 
 ## Details
 
+- By default, `sd` times out each stream after 10 seconds of no received messages (i.e. `sd -t 10`).
 - Note that `sd` does not guarantee order of output, nor uniqueness. If you need those, just `| sort | uniq`.
 - Because `sd` compares every line of `STDIN` against all lines in the second stream, and although it's very fast, execution time will increase linearly as one stream grows and quadratically as both streams grow. 1M^2 comparisons might become impractical.

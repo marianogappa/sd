@@ -5,9 +5,14 @@ Diffs two streams of line-separated strings, timing them out if necessary.
 [![Coverage Status](https://coveralls.io/repos/github/MarianoGappa/sd/badge.svg?branch=master&nocache=1)](https://coveralls.io/github/MarianoGappa/sd?branch=master)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/MarianoGappa/sd/master/LICENSE)
 
+[Blogpost - Diffing streams on the terminal](http://marianogappa.github.io/software/2016/07/30/diffing-streams-on-the-terminal/)
+
+## Syntax
+
 ```
 sd [OPTIONS] 'COMMAND'
 ```
+
 ## Options
 
 **-f --follow** keeps reading from `STDIN` until `SIGINT` or its end.
@@ -55,11 +60,11 @@ But both `STDIN` and `COMMAND` can be lengthy operations or infinite streams.
 
 - Query user cities and excluded cities at the same time. Output only non-excluded cities. If it takes longer than 120 seconds, stop.
 ```
-mysql db1 -Nsre "SELECT city FROM user" | sd -h 120 mysql db2 -Nsre "SELECT city FROM excluded_city"
+mysql db1 -Nsre "SELECT city FROM user" | sd -h 120 'mysql db2 -Nsre "SELECT city FROM excluded_city"'
 ```
 - Query user cities and consume excluded cities from a Kafka consumer at the same time, and output only non-excluded cities to output.txt. Allow infinite time to pass for the first streamed element (as query could take a long time to run), but then timeout if 10 seconds pass since the last streamed message.
 ```
-mysql -Nsre "SELECT city FROM user" | sd -p 0 -t 10 kafka_consumer --topic excluded_city > city.txt
+mysql -Nsre "SELECT city FROM user" | sd -p 0 -t 10 'kafka_consumer --topic excluded_city' > city.txt
 ```
 
 ## Details

@@ -177,6 +177,7 @@ var args []string
 func main() {
 	if len(os.Args) < 2 {
 		usage()
+		os.Exit(1)
 	}
 	args := os.Args[1:]
 

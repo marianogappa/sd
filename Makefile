@@ -1,7 +1,8 @@
 all: build
+OS = $(shell uname | tr [:upper:] [:lower:])
 
 build: ARTIFACT ?= sd
-build: GOOS ?= darwin
+build: GOOS ?= ${OS}
 build: GOARCH ?= amd64
 build: clean test
 		GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 go build -o ${ARTIFACT} -a .

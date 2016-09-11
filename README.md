@@ -25,6 +25,8 @@ sd [OPTIONS] 'COMMAND'
 
 **-h --hard-timeout %seconds%** `exit(0)` after the specified seconds (or earlier). Overrides all other options.
 
+**--intersection** outputs the intersection between the two streams.
+
 ## Installing
 
 Find the latest binaries for your OS in the [Releases](https://github.com/MarianoGappa/sd/releases/) section.

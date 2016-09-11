@@ -30,6 +30,7 @@ Options
 	-p --patience %seconds%: wait for the specified seconds for the first received line. Use 0 for waiting forever.
 	-t --timeout %seconds%: exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN).
 	-h --hard-timeout %seconds%: exit(0) after the specified seconds (or earlier). Overrides all other options.
+	--intersection: outputs the intersection between the two streams.
 
 `)
 }
@@ -37,6 +38,7 @@ Options
 type options struct {
 	follow      bool
 	infinite    bool
+	intersection    bool
 	patience    int
 	timeoutF    int
 	hardTimeout int
@@ -45,6 +47,7 @@ type options struct {
 func defineOptions(fs *flag.FlagSet) *options {
 	followHelp := "keeps reading from STDIN until SIGINT or its end."
 	infiniteHelp := "keeps reading from COMMAND until it ends rather than timing it out. Note that if the stream doesn't end, sd just blocks forever and does nothing."
+	intersectionHelp := "outputs the intersection between the two streams."
 	patienceHelp := "wait for the specified seconds for the first received line. Use 0 for waiting forever."
 	timeoutHelp := "exit(0) after specified seconds from last received line. STDIN and command have independent timeouts. When with -f, timeout only applies to the command (not to STDIN)."
 	hardTimeoutHelp := "exit(0) after the specified seconds (or earlier). Overrides all other options."
@@ -56,6 +59,7 @@ func defineOptions(fs *flag.FlagSet) *options {
 	fs.BoolVar(&o.follow, "f", o.follow, followHelp)
 	fs.BoolVar(&o.infinite, "infinite", o.infinite, infiniteHelp)
 	fs.BoolVar(&o.infinite, "i", o.infinite, infiniteHelp)
+	fs.BoolVar(&o.intersection, "intersection", o.intersection, intersectionHelp)
 	fs.IntVar(&o.patience, "patience", o.patience, patienceHelp)
 	fs.IntVar(&o.patience, "p", o.patience, patienceHelp)
 	fs.IntVar(&o.timeoutF, "timeout", o.timeoutF, timeoutHelp)
@@ -71,6 +75,7 @@ func defineOptions(fs *flag.FlagSet) *options {
 func setDefaultOptions(o *options) {
 	o.follow = false
 	o.infinite = false
+	o.intersection = false
 	o.patience = -1
 	o.timeoutF = 10
 	o.hardTimeout = 0

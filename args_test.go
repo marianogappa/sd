@@ -17,6 +17,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -27,6 +28,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      true,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -37,6 +39,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      false,
 				infinite:    true,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -47,6 +50,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    0,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -57,6 +61,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    5,
 				hardTimeout: 0,
@@ -67,6 +72,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 120,
@@ -77,6 +83,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      true,
 				infinite:    true,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -103,6 +110,7 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      true,
 				infinite:    true,
+				intersection: false,
 				patience:    2,
 				timeoutF:    1,
 				hardTimeout: 3,
@@ -113,9 +121,21 @@ func TestResolveOptions(t *testing.T) {
 			expected: options{
 				follow:      true,
 				infinite:    true,
+				intersection: false,
 				patience:    2,
 				timeoutF:    1,
 				hardTimeout: 3,
+			},
+		},
+		{
+			args: []string{"--intersection"},
+			expected: options{
+				follow:      false,
+				infinite:    false,
+				intersection: true,
+				patience:    -1,
+				timeoutF:    10,
+				hardTimeout: 0,
 			},
 		},
 	}
@@ -147,6 +167,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -170,6 +191,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      true,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -193,6 +215,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      false,
 				infinite:    true,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -216,6 +239,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    0,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -239,6 +263,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      true,
 				infinite:    false,
+				intersection: false,
 				patience:    20,
 				timeoutF:    10,
 				hardTimeout: 0,
@@ -262,6 +287,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      false,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    10,
 				hardTimeout: 120,
@@ -285,6 +311,7 @@ func TestResolveTimeouts(t *testing.T) {
 			options: &options{
 				follow:      true,
 				infinite:    false,
+				intersection: false,
 				patience:    -1,
 				timeoutF:    30,
 				hardTimeout: 0,

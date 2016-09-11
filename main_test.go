@@ -43,10 +43,11 @@ func TestReadCmd(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 	reader := cmdToReader(`echo -e "1\n2\n3\n4"`)
 
-	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -55,12 +56,27 @@ func TestDiff(t *testing.T) {
 	}
 }
 
+func TestIntersection(t *testing.T) {
+	intersection := true
+	stdout := make(chan string)
+	reader := cmdToReader(`echo -e "1\n2\n3\n4"`)
+
+	go diff(`echo -e "1\n3"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
+
+	lines := readAndSortBlocking(stdout, 1*time.Second)
+
+	if reflect.DeepEqual(lines, []string{"1", "3"}) != true {
+		t.Errorf("result wasn't ['1', '3'], it was %v", lines)
+	}
+}
+
 func TestDiffWhenInputTimesOut(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 
 	reader := cmdToReader(`echo -e "1\n3\n3\n3\n1\n2\n4" && sleep .101 && echo "5"`)
 
-	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+	go diff(`echo -e "1\n2"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -71,10 +87,11 @@ func TestDiffWhenInputTimesOut(t *testing.T) {
 }
 
 func TestDiffWhenOutputTimesOut(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 	reader := cmdToReader(`echo -e "1\n2\n3\n4\n5"`)
 
-	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+	go diff(`echo -e "1\n2" && sleep 1 && echo -e "3\n4"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -84,9 +101,10 @@ func TestDiffWhenOutputTimesOut(t *testing.T) {
 }
 
 func TestExpensiveTestCase(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 	reader := cmdToReader(`seq 10000`)
-	go diff(`seq 5001 10000`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+	go diff(`seq 5001 10000`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -96,11 +114,12 @@ func TestExpensiveTestCase(t *testing.T) {
 }
 
 func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 	reader := cmdToReader(`echo -e "1\n2\n3\n4\n5\n6"`)
 
 	go diff(`echo "1" && sleep .1 && echo "2" && sleep .1 && echo "3" && sleep .1 && echo "4" && sleep .1 && echo "ten"`,
-		defaultTimeout(), timeout{firstTime: 200 * time.Millisecond, time: 200 * time.Millisecond}, stdout, mockUtils{reader})
+		defaultTimeout(), timeout{firstTime: 200 * time.Millisecond, time: 200 * time.Millisecond}, stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -110,10 +129,11 @@ func TestDiffWhenDelaysAddUpToTimeoutSeparatelyButDoesntTimeout(t *testing.T) {
 }
 
 func TestEmptyCommand(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 
 	reader := cmdToReader(`echo -e "1\n2\n3"`)
-	go diff(`echo ""`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader})
+	go diff(`echo ""`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{reader}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 
@@ -123,9 +143,10 @@ func TestEmptyCommand(t *testing.T) {
 }
 
 func TestEmptyStdin(t *testing.T) {
+	intersection := false
 	stdout := make(chan string)
 
-	go diff(`echo "1\n2\n3"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{strings.NewReader(``)})
+	go diff(`echo "1\n2\n3"`, defaultTimeout(), defaultTimeout(), stdout, mockUtils{strings.NewReader(``)}, intersection)
 
 	lines := readAndSortBlocking(stdout, 1*time.Second)
 

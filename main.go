@@ -66,24 +66,29 @@ func readCmd(cmdString string, o chan string, cancel chan struct{}) {
 	}()
 }
 
-func diffLine(v string, stdout chan string, diffee *[]string, start chan struct{}, wg *sync.WaitGroup) {
-loop:
-	for {
-		select {
-		case <-start:
-			break loop
-		}
-	} // wait until diffee finishes loading
+func diffLine(v string, stdout chan string, diffee *[]string, start chan struct{}, intersection bool, wg *sync.WaitGroup) {
+	<-start // wait until diffee finishes loading
 
-	found := false
-	for _, w := range *diffee {
-		if v == w {
-			found = true
+	if intersection {
+		for _, w := range *diffee {
+			if v == w {
+				stdout <- v
+				break
+			}
+		}
+	} else {
+		found := false
+		for _, w := range *diffee {
+			if v == w {
+				found = true
+				break
+			}
+		}
+		if !found {
+			stdout <- v
 		}
 	}
-	if !found {
-		stdout <- v
-	}
+
 	wg.Done()
 }
 
@@ -94,7 +99,16 @@ func printLn(stdout chan string, done chan struct{}) {
 	close(done)
 }
 
-func processStdin(stdinCh chan string, diffee *[]string, stdinTimeout timeout, cancelStdin chan struct{}, start chan struct{}, stdout chan string, wg *sync.WaitGroup) {
+func processStdin(
+	stdinCh chan string,
+	diffee *[]string,
+	stdinTimeout timeout,
+	cancelStdin chan struct{},
+	start chan struct{},
+	stdout chan string,
+	intersection bool,
+	wg *sync.WaitGroup) {
+
 	stdinTimeout.Start()
 	var innerWg sync.WaitGroup
 
@@ -106,7 +120,7 @@ loop:
 				break loop
 			}
 			innerWg.Add(1)
-			go diffLine(s, stdout, diffee, start, &innerWg)
+			go diffLine(s, stdout, diffee, start, intersection, &innerWg)
 			stdinTimeout.Reset()
 		case <-*stdinTimeout.c:
 			close(cancelStdin)
@@ -136,7 +150,7 @@ func processCmd(cmdCh chan string, diffee *[]string, cmdTimeout timeout, cancelC
 	}
 }
 
-func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan string, utils iDiffUtils) {
+func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan string, utils iDiffUtils, intersection bool) {
 	var diffee []string
 
 	stdinCh := make(chan string)
@@ -151,7 +165,7 @@ func diff(cmd string, stdinTimeout timeout, cmdTimeout timeout, stdout chan stri
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go processStdin(stdinCh, &diffee, stdinTimeout, cancelStdin, start, stdout, &wg)
+	go processStdin(stdinCh, &diffee, stdinTimeout, cancelStdin, start, stdout, intersection, &wg)
 	go processCmd(cmdCh, &diffee, cmdTimeout, cancelCmd, start, &wg)
 
 	wg.Wait()
@@ -166,13 +180,14 @@ func main() {
 	}
 	args := os.Args[1:]
 
-	stdinTimeout, cmdTimeout := resolveTimeouts(mustResolveOptions(args))
+	options := mustResolveOptions(args)
+	stdinTimeout, cmdTimeout := resolveTimeouts(options)
 	cmd := os.Args[len(os.Args)-1]
 
 	stdout := make(chan string)
 	done := make(chan struct{})
 
 	go printLn(stdout, done)
-	diff(cmd, stdinTimeout, cmdTimeout, stdout, diffUtils{})
+	diff(cmd, stdinTimeout, cmdTimeout, stdout, diffUtils{}, options.intersection)
 	<-done
 }
